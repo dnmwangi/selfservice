@@ -1,0 +1,26 @@
+---
+- name: Assign a jira issue via api
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Assign a jira issue via api"
+      ansible.builtin.uri:
+        url: "{{ jira_url }}/rest/api/2/issue/{{ jira_issue }}"
+        user: "{{ jira_username }}"
+        password: "{{ jira_password }}"
+        method: "PUT"
+        body:
+          fields:
+            assignee:
+              name: "provisioning"
+        force_basic_auth: true
+        status_code: 204
+        body_format: "json"
+      register: results
+
+    - name: "Output jira assign results"
+      ansible.builtin.debug:
+        var: results.status

@@ -1,0 +1,247 @@
+---
+- name: Configure automation controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Create jira api credential type"
+      awx.awx.credential_type:
+        name: "Jira"
+        description: "Credentials type for jira"
+        kind: "cloud"
+        inputs:
+          fields:
+            - id: "username"
+              type: "string"
+              label: "username"
+              multiline: false
+            - id: "password"
+              type: "string"
+              label: "password"
+              secret: true
+              multiline: false
+            - id: "url"
+              type: "string"
+              label: "url"
+              secret: false
+              multiline: false
+        injectors:
+          extra_vars:
+            jira_username: "{% raw -%}{{ username }}{% endraw -%}"
+            jira_password: "{% raw -%}{{ password }}{% endraw -%}"
+            jira_url: "{% raw -%}{{ url }}{% endraw -%}"
+        state: present
+        controller_config_file: "controller.cfg"
+
+    - name: "Create jira api credential"
+      awx.awx.credential:
+        name: "Jira provisioning"
+        organization: "Default"
+        state: "present"
+        credential_type: "Jira"
+        inputs:
+          username: "{{ lookup('env', 'TF_VAR_jira_provisioning_username') }}"
+          password: "{{ lookup('env', 'TF_VAR_jira_provisioning_password') }}"
+          url: "{{ lookup('env', 'TF_VAR_jira_url') }}"
+        controller_config_file: "controller.cfg"
+
+    - name: "Add project for jira self-service"
+      awx.awx.project:
+        name: "Self-service"
+        description: "Jira self-service integration."
+        organization: "Default"
+        state: "present"
+        scm_type: "git"
+        scm_url: "https://gitlab.com/jmhbnz/self-service-demo.git"
+        controller_config_file: "controller.cfg"
+        scm_update_on_launch: false
+
+    - name: "Add job template for request validation"
+      awx.awx.job_template:
+        name: "Validate provisioning request"
+        organization: "Default"
+        state: "present"
+        description: "Job template to validate an provisioning request."
+        project: "Self-service"
+        inventory: "Localhost"
+        playbook: "6-jira-workflow-vm-provisioning/validate-provisioning-request.yaml"
+        survey_enabled: false
+        ask_variables_on_launch: false
+        controller_config_file: "controller.cfg"
+
+    - name: "Add job template for jira comment"
+      awx.awx.job_template:
+        name: "Jira comment"
+        organization: "Default"
+        state: "present"
+        description: ""
+        project: "Self-service"
+        inventory: "Localhost"
+        playbook: "6-jira-workflow-vm-provisioning/comment-jira-issue-api.yaml"
+        survey_enabled: false
+        ask_credential_on_launch: true
+        ask_variables_on_launch: true
+        controller_config_file: "controller.cfg"
+
+    - name: "Add job template for jira assign"
+      awx.awx.job_template:
+        name: "Jira assign"
+        organization: "Default"
+        state: "present"
+        description: ""
+        project: "Self-service"
+        inventory: "Localhost"
+        playbook: "6-jira-workflow-vm-provisioning/assign-jira-issue-api.yaml"
+        survey_enabled: false
+        ask_credential_on_launch: true
+        ask_variables_on_launch: true
+        controller_config_file: "controller.cfg"
+
+    - name: "Add job template for jira transition"
+      awx.awx.job_template:
+        name: "Jira transition"
+        organization: "Default"
+        state: "present"
+        description: ""
+        project: "Self-service"
+        inventory: "Localhost"
+        playbook: "6-jira-workflow-vm-provisioning/transition-jira-issue-api.yaml"
+        survey_enabled: false
+        ask_credential_on_launch: true
+        ask_variables_on_launch: true
+        controller_config_file: "controller.cfg"
+
+    - name: "Create a workflow job template for vm provisioning"
+      awx.awx.workflow_job_template:
+        controller_config_file: "controller.cfg"
+        name: "Vm provisioning"
+        inventory: "Localhost"
+        destroy_current_schema: true
+        ask_variables_on_launch: true
+        allow_simultaneous: true
+
+    - name: "Create workflow node for done transition"
+      awx.awx.workflow_job_template_node:
+        identifier: "Done transition"
+        unified_job_template: "Jira transition"
+        workflow_job_template: "Vm provisioning"
+        extra_data:
+          jira_transition: "41"
+        credentials:
+          - "Jira provisioning"
+        controller_config_file: "controller.cfg"
+
+    - name: "Create workflow node for provisioning done comment"
+      awx.awx.workflow_job_template_node:
+        identifier: "Completed comment"
+        unified_job_template: "Jira comment"
+        workflow_job_template: "Vm provisioning"
+        credentials:
+          - "Jira provisioning"
+        extra_data:
+          jira_comment: "Provisioning workflow completed! New instance has been created, check your inbox! ✅"
+        controller_config_file: "controller.cfg"
+        all_parents_must_converge: true
+        success_nodes: "Done transition"
+
+    - name: "Create workflow node for vm provision"
+      awx.awx.workflow_job_template_node:
+        identifier: "Create new vm instance"
+        unified_job_template: "Create ec2 instance"
+        workflow_job_template: "Vm provisioning"
+        controller_config_file: "controller.cfg"
+        success_nodes:
+          - "Completed comment"
+
+    - name: "Create workflow node for provisioning comment"
+      awx.awx.workflow_job_template_node:
+        identifier: "Assigned comment"
+        unified_job_template: "Jira comment"
+        workflow_job_template: "Vm provisioning"
+        credentials:
+          - "Jira provisioning"
+        extra_data:
+          jira_comment: "This issue has been picked up by provisioning bot :)  You can track my progress here: https://aap.apps.rosa-xjm4v.nx1c.p1.openshiftapps.com/#/jobs?job.name__icontains=provisioning&job.or__type=workflow_job"
+        controller_config_file: "controller.cfg"
+        success_nodes:
+          - "Create new vm instance"
+
+    - name: "Create workflow node for provisioning declined"
+      awx.awx.workflow_job_template_node:
+        identifier: "Declined comment"
+        unified_job_template: "Jira comment"
+        workflow_job_template: "Vm provisioning"
+        credentials:
+          - "Jira provisioning"
+        extra_data:
+          jira_comment: "Provisioning instance was not approved."
+        controller_config_file: "controller.cfg"
+
+    - name: "Create workflow node for in progress transition"
+      awx.awx.workflow_job_template_node:
+        identifier: "In progress transition"
+        unified_job_template: "Jira transition"
+        workflow_job_template: "Vm provisioning"
+        extra_data:
+          jira_transition: "11"
+        credentials:
+          - "Jira provisioning"
+        controller_config_file: "controller.cfg"
+        success_nodes:
+          - "Assigned comment"
+
+    - name: "Create workflow node for provisioning assign"
+      awx.awx.workflow_job_template_node:
+        identifier: "Assign"
+        unified_job_template: "Jira assign"
+        workflow_job_template: "Vm provisioning"
+        credentials:
+          - "Jira provisioning"
+        controller_config_file: "controller.cfg"
+        success_nodes:
+          - "In progress transition"
+
+    - name: "Approval node based on role"
+      awx.awx.workflow_job_template_node:
+        identifier: "Approval"
+        workflow_job_template: "Vm provisioning"
+        approval_node:
+          description: "Should instance be created?"
+          name: "Approval"
+          timeout: 3600
+        controller_config_file: "controller.cfg"
+
+    - name: "Link approval node"
+      awx.awx.workflow_job_template_node:
+        identifier: "Approval"
+        workflow_job_template: "Vm provisioning"
+        controller_config_file: "controller.cfg"
+        success_nodes:
+          - "Assign"
+        failure_nodes:
+          - "Declined comment"
+
+    - name: "Create workflow node for approval required comment"
+      awx.awx.workflow_job_template_node:
+        identifier: "Approval comment"
+        unified_job_template: "Jira comment"
+        workflow_job_template: "Vm provisioning"
+        credentials:
+          - "Jira provisioning"
+        extra_data:
+          jira_comment: "Approval required for this request: https://aap.apps.rosa-xjm4v.nx1c.p1.openshiftapps.com/#/workflow_approvals?workflow_approvals.status__startswith=pending"
+        controller_config_file: "controller.cfg"
+        success_nodes: "Approval"
+
+    - name: "Create workflow node for request validation"
+      awx.awx.workflow_job_template_node:
+        identifier: "Validate"
+        unified_job_template: "Validate provisioning request"
+        workflow_job_template: "Vm provisioning"
+        controller_config_file: "controller.cfg"
+        success_nodes:
+         - "Assign"
+        failure_nodes:
+          - "Approval comment"

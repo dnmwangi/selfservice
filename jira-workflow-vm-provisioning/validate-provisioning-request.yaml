@@ -1,0 +1,19 @@
+---
+- name: Validate a provisioning request
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Ensure expected variables are present"
+      assert:
+        that:
+          - jira_issue is defined
+          - instance_type is defined
+          - region is defined
+
+    - name: "Check if a manual approval will be required"
+      fail:
+        msg: "Manual approval is required for the requested instance '{{ instance_type }}'."
+      when: instance_type != "t2.micro"
