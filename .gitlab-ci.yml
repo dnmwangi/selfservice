@@ -1,0 +1,99 @@
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Terraform.gitlab-ci.yml
+
+include:
+  - template: Terraform/Base.gitlab-ci.yml  # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Terraform/Base.gitlab-ci.yml
+
+stages:
+  - validate
+  - test
+  - build
+  - create-vm
+  - deploy
+  - cleanup
+
+variables:
+  region:
+    description: "Enter the region for ec2 instance"
+    value: "ap-southeast-2"
+  instance_type:
+    description: "Enter the desired ec2 instance type"
+    value: "t2.micro"
+  rhel_version:
+    description: "Enter the RHEL version"
+    value: "9.1"
+  tags_purpose:
+    description: "Enter a purpose tag for the instance"
+    value: "demo"
+
+before_script:
+  - export TF_ROOT="0-deploy-demo-infra"
+
+
+lint:
+  image: registry.access.redhat.com/ubi9/python-39
+  stage: validate
+  script:
+    - pip3 install ansible ansible-lint
+    - ansible-lint 1-ansible-automation-platform/*.yaml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+fmt:
+  extends: .terraform:fmt
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - 0-deploy-demo-infra/*
+
+validate:
+  extends: .terraform:validate
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - 0-deploy-demo-infra/*
+
+build:
+  extends: .terraform:build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - 0-deploy-demo-infra/*
+
+create-ec2-instance:
+  image: registry.access.redhat.com/ubi9/python-39
+  stage: create-vm
+  script:
+    - pip3 install awxkit
+    - >
+        awx --conf.token "$TF_VAR_aap_token" -k --conf.host https://controller.rhdemo.win
+        job_templates launch "Create ec2 instance"
+        --extra_vars "{\"region\": \"$region\", \"instance_type\": \"$instance_type\", \"rhel_version\": \"$rhel_version\", \"tags_purpose\": \"$tags_purpose\" }"
+        --monitor
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+deploy:
+  extends: .terraform:deploy
+  environment:
+    name: development
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - 0-deploy-demo-infra/*
+      when: manual
+
+destroy:
+  extends: .terraform:destroy
+  when: manual
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - 0-deploy-demo-infra/*
+      when: manual

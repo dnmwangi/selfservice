@@ -1,0 +1,10 @@
+#+TITLE: Ansible automation platform demo
+#+AUTHOR: James Blair <jablair@redhat.com>
+#+DATE: 5th January 2023
+
+This repository contains an end to end workflow for automatically assembling environments that will be used to demonstrate enterprise self-service and day two operations capabilities of Red Hat [[https://www.ansible.com/products/automation-platform][Ansible Automation Platform]].
+
+The repository will be structured with sequentially numbered directories that can be followed in order to create environments and carry out the demo flow.
+
+#+CAPTION: Diagram showing the mission of Ansible Automation Platform to unify teams.
+[[./images/aap-mission.jpg]]

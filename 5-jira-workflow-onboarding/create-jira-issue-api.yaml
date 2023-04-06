@@ -1,0 +1,32 @@
+---
+- name: Create a jira issue via api
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Create jira issue via api"
+      ansible.builtin.uri:
+        url: "{{ jira_url }}/rest/api/2/issue/"
+        user: "{{ jira_username }}"
+        password: "{{ jira_password }}"
+        method: "POST"
+        body:
+          fields:
+            project:
+              key: "PLAT"
+            issuetype:
+              name: "Onboarding"
+            summary: "Onboard new developer"
+            customfield_10101: "newbie"
+            customfield_10100:
+              value: "Developer"
+        force_basic_auth: true
+        status_code: 201
+        body_format: "json"
+      register: results
+
+    - name: "Output jira issue creation results"
+      ansible.builtin.debug:
+        var: results.json

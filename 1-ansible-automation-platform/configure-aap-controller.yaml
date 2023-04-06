@@ -1,0 +1,234 @@
+---
+- name: Configure automation controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Set the controller license using a file."
+      awx.awx.license:
+        manifest: "manifest.zip"
+        controller_config_file: "controller.cfg"
+
+    - name: "Generate a new admin user token."
+      awx.awx.token:
+        description: "Admin token for pipeline use."
+        scope: "write"
+        state: present
+        controller_config_file: "controller.cfg"
+      register: token_results
+      when: first_run | default(false) | bool
+
+    - name: "Update new token to .env file."
+      ansible.builtin.lineinfile:
+        path: "../.env"
+        regexp: "^export TF_VAR_app_token="
+        line: 'export TF_VAR_app_token={{ token_results.ansible_facts.controller_token.token }}'
+      when: first_run | default(false) | bool
+
+    - name: "Remove the default demo inventory"
+      awx.awx.inventory:
+        name: "Demo Inventory"
+        organization: "Default"
+        state: "absent"
+        controller_config_file: "controller.cfg"
+
+    - name: "Remove the default demo credential"
+      awx.awx.credential:
+        name: "Demo Credential"
+        state: "absent"
+        credential_type: "Machine"
+        controller_config_file: "controller.cfg"
+
+    - name: "Remove the default demo project"
+      awx.awx.project:
+        name: "Demo Project"
+        organization: "Default"
+        state: "absent"
+        controller_config_file: "controller.cfg"
+
+    - name: "Remove the default demo job template"
+      awx.awx.job_template:
+        name: "Demo Job Template"
+        organization: "Default"
+        state: "absent"
+        controller_config_file: "controller.cfg"
+
+    - name: "Create gitlab source control credential"
+      awx.awx.credential:
+        name: "Gitlab"
+        organization: "Default"
+        state: "present"
+        credential_type: "Source Control"
+        inputs:
+          username: "read_only_public_repo"
+          password: "{{ lookup('env', 'TF_VAR_gitlab_token') }}"
+        controller_config_file: "controller.cfg"
+
+    - name: "Create gitlab container registry credential"
+      awx.awx.credential:
+        name: "Gitlab Registry"
+        organization: "Default"
+        state: "present"
+        credential_type: "Container Registry"
+        inputs:
+          host: "registry.gitlab.com"
+          password: "{{ lookup('env', 'TF_VAR_gitlab_token') }}"
+          username: "jmhbnz"
+          verify_ssl: true
+        controller_config_file: "controller.cfg"
+
+    - name: "Add project for infra creation"
+      awx.awx.project:
+        name: "Cloud adoption"
+        description: "Cloud adoption automation."
+        organization: "Default"
+        state: "present"
+        scm_type: "git"
+        scm_url: "https://gitlab.com/jmhbnz/terraform-aws-rhel-ec2-instance.git"
+        controller_config_file: "controller.cfg"
+        scm_update_on_launch: false
+
+    - name: "Add project for linux patching"
+      awx.awx.project:
+        name: "Linux patching"
+        description: "Linux server patching automation."
+        organization: "Default"
+        state: "present"
+        scm_type: "git"
+        scm_url: "https://gitlab.com/jmhbnz/terraform-aws-rhel-ec2-instance.git"
+        controller_config_file: "controller.cfg"
+        scm_update_on_launch: false
+
+    - name: "Add credential for aws"
+      awx.awx.credential:
+        name: "Amazon Web Services"
+        organization: "Default"
+        state: "present"
+        credential_type: "Amazon Web Services"
+        inputs:
+          password: "{{ lookup('env', 'TF_VAR_aws_secret_key') }}"
+          username: "{{ lookup('env', 'TF_VAR_aws_access_key') }}"
+        controller_config_file: "controller.cfg"
+
+    - name: "Add machine credential for aws hosts"
+      awx.awx.credential:
+        name: "Amazon Web Services Machine"
+        organization: "Default"
+        state: "present"
+        credential_type: "Machine"
+        inputs:
+          username: "ec2-user"
+          ssh_key_data: "{{ lookup('file', '../0-deploy-demo-infra/rhel-demo-dev-linux-ap-southeast-2.pem') }}"
+        controller_config_file: "controller.cfg"
+
+    - name: "Add localhost inventory"
+      awx.awx.inventory:
+        name: "Localhost"
+        organization: "Default"
+        state: "present"
+        controller_config_file: "controller.cfg"
+
+    - name: "Add middleware team ec2 inventory"
+      awx.awx.inventory:
+        name: "AWS Middleware non-production"
+        organization: "Default"
+        state: "present"
+        controller_config_file: "controller.cfg"
+
+    - name: "Add cloud source for middleware inventory"
+      awx.awx.inventory_source:
+        name: "AWS Middleware non-production"
+        inventory: "AWS Middleware non-production"
+        source: "ec2"
+        credential: "Amazon Web Services"
+        overwrite: true
+        source_vars:
+          filters:
+            tag:type: demo
+        controller_config_file: "controller.cfg"
+
+    - name: "Create schedule for inventory sync to run every 5 minutes."
+      awx.awx.schedule:
+        name: "Cloud inventory sync"
+        rrule: "DTSTART:20230124T202445Z RRULE:FREQ=MINUTELY;INTERVAL=5"
+        unified_job_template: "AWS Middleware non-production"
+        controller_config_file: "controller.cfg"
+
+    - name: "Add job template for creating virtual machines"
+      awx.awx.job_template:
+        name: "Create ec2 instance"
+        organization: "Default"
+        state: "present"
+        description: "Job template to create an aws ec2 instance."
+        project: "Cloud adoption"
+        inventory: "Localhost"
+        playbook: "1-ansible-automation-platform/deploy-ec2-native.yaml"
+        credential: "Amazon Web Services"
+        survey_enabled: false
+        ask_variables_on_launch: true
+        controller_config_file: "controller.cfg"
+
+    - name: "Add job template for patching server"
+      awx.awx.job_template:
+        name: "Patch rhel server"
+        organization: "Default"
+        state: "present"
+        description: "Job template to patch a rhel server."
+        project: "Linux patching"
+        inventory: "AWS Middleware non-production"
+        playbook: "1-ansible-automation-platform/patch-rhel-server.yaml"
+        credential: "Amazon Web Services Machine"
+        survey_enabled: false
+        ask_variables_on_launch: true
+        controller_config_file: "controller.cfg"
+
+    - name: "Add job for creating developer workstation"
+      awx.awx.job_template:
+        name: "Development environment"
+        organization: "Default"
+        state: "present"
+        description: >
+          Use this catalog item to request a non-production virtual machine for a development environment.
+
+          Select the region, instance type and operating system version.
+
+          Approved requests will be provisioned automatically within 5 minutes. Requests with an instance_type of "t2.micro" will be automatically approved.
+        project: "Cloud adoption"
+        inventory: "Localhost"
+        playbook: "1-ansible-automation-platform/deploy-ec2-native.yaml"
+        credential: "Amazon Web Services"
+        controller_config_file: "controller.cfg"
+        survey_enabled: true
+        survey_spec:
+          name: "Options"
+          description: "Survey for new environment."
+          spec:
+            - type: "multiplechoice"
+              question_name: "Region"
+              question_description: "What region should the developer environment be created in?"
+              variable: "region"
+              required: true
+              default: "ap-southeast-2 Sydney"
+              choices: ["ap-southeast-1 Singapore", "ap-southeast-2 Sydney", "ap-southeast-3 Jakarta"]
+            - type: "multiplechoice"
+              question_name: "Instance Type"
+              question_description: "What instance type should the developer environment use?"
+              variable: "instance_type"
+              required: true
+              default: "t2.micro 1vCPU 1GiB Mem"
+              choices: ["t2.micro 1vCPU 1GiB Mem", "t2.medium 2vCPU 4GiB Mem", "t2.large 2vCPU 8GiB Mem"]
+            - type: "multiplechoice"
+              question_name: "RHEL Version"
+              question_description: "What version of Red Hat Enterprise Linux should be running?"
+              variable: "rhel_version"
+              default: "8.7"
+              required: true
+              choices: ["8.7", "9.1"]
+            - type: "text"
+              question_name: "Tag"
+              question_description: "Provide a tag to indicate what this environment will be used for."
+              variable: "tags_purpose"
+              required: true
+              default: ""

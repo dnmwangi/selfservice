@@ -1,0 +1,17 @@
+---
+- name: "Launch an automation controller job"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Launch job to create an ec2 instance"
+      awx.awx.job_launch:
+        job_template: "Create ec2 instance"
+        controller_config_file: "controller.cfg"
+        extra_vars:
+          region: "ap-southeast-2"
+          instance_type: "t2.micro"
+          rhel_version: "8.7"
+          tags_purpose: "demo"

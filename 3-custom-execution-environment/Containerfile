@@ -1,0 +1,8 @@
+FROM registry.redhat.io/ansible-automation-platform-22/ee-supported-rhel8:latest
+
+USER root
+
+RUN microdnf install wget unzip \
+    && wget https://releases.hashicorp.com/terraform/1.3.4/terraform_1.3.4_linux_amd64.zip \
+    && unzip terraform_1.3.4_linux_amd64.zip \
+    && install terraform /usr/local/bin

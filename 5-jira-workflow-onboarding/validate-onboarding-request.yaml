@@ -1,0 +1,19 @@
+---
+- name: Validate an onboarding request
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Ensure expected variables are present"
+      assert:
+        that:
+          - jira_issue is defined
+          - new_user_id is defined
+          - new_user_role is defined
+
+    - name: "Check if a manual approval will be required"
+      fail:
+        msg: "Manual approval is required for the requested role '{{ new_user_role }}'."
+      when: new_user_role == "Administrator" or new_user_role == "Privileged Developer"

@@ -1,0 +1,26 @@
+---
+- name: Approve an aap workflow
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Identify id of pending approval"
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/v2/workflow_approvals?status__startswith=pending"
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        method: "GET"
+        force_basic_auth: true
+        status_code: 200
+      register: results
+
+    - name: "Approve an aap workflow"
+      awx.awx.workflow_approval:
+        workflow_job_id: "{{ results.json.results[0].summary_fields.source_workflow_job.id }}"
+        name: "Approval"
+        interval: 10
+        timeout: 20
+        action: "approve"
+        controller_config_file: controller.cfg

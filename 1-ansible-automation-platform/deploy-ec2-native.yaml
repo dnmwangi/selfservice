@@ -1,0 +1,50 @@
+---
+- name: "Create a rhel aws ec2 instance"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "Retrieve the default vpc subnet id"
+      amazon.aws.ec2_vpc_subnet_info:
+        region: "{{ region.split(' ')[0] | default('ap-southeast-2') }}"
+        filters:
+          "tag:Name": "rhel-demo-dev-public-subnet"
+      register: subnet_info
+
+    - name: "Print new vm variables"
+      ansible.builtin.debug:
+        msg:
+          - "Subnet identified: {{ subnet_info.subnets[0].id }}"
+          - "Region input: {{ region }}"
+          - "Instance type: {{ instance_type }}"
+          - "Purpose: {{ tags_purpose }}"
+
+    - name: "Create a rhel aws ec2 instance"
+      amazon.aws.ec2_instance:
+        name: "{{ tags_purpose }}-ec2-instance"
+        key_name: "rhel-demo-dev-linux-ap-southeast-2"
+        vpc_subnet_id: "{{ subnet_info.subnets[0].id }}"
+        instance_type: "{{ instance_type.split(' ')[0] | default('t2.micro') }}"
+        security_group: "rhel-demo-dev-linux-sg"
+        region: "{{ region.split(' ')[0] | default('ap-southeast-2') }}"
+        network:
+          assign_public_ip: false
+        image_id: "ami-0b4ee18dc73d90a7b"
+        user_data: "{{ lookup('file', '../0-deploy-demo-infra/aws-user-data.sh') | b64encode }}"
+        state: running
+        wait: true
+        tags:
+          type: "demo"
+          Name: "{{ tags_purpose }}"
+          purpose: "{{ tags_purpose }}"
+      register: instance
+
+    - name: "Allocating elastic ip to instance"
+      amazon.aws.ec2_eip:
+        in_vpc: true
+        reuse_existing_ip_allowed: true
+        state: present
+        region: "{{ region.split(' ')[0] | default('ap-southeast-2') }}"
+        instance_id: "{{ instance.instance_ids[0] }}"

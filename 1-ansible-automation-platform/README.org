@@ -1,0 +1,35 @@
+#+TITLE: Configure ansible automation controller
+#+AUTHOR: James Blair <jablair@redhat.com>
+#+DATE: 14th November 2022
+
+This guide will cover configuring [[https://www.ansible.com/products/controller][Ansible Automation Controller]] with a self service aws ec2 virtual machine provisioning and management example. The intent of this guide is to make it easy to demonstrate the self service capabilities of Ansible Automation Platform.
+
+We need to spin up demonstration environments quickly then throw them away again when finished, with this in mind we will automate our entire configuration for ansible automation controller using the [[https://console.redhat.com/ansible/automation-hub/repo/published/ansible/controller/][automation controller]] ansible collection.
+
+Using this approach our entire demo configuration can be completed by running a single playbook below.
+
+#+NAME: Configure aap as code
+#+begin_src tmate
+# Source secrets
+source ../.env
+
+# Create controller.cfg file
+cat << EOF > controller.cfg
+[general]
+host=https://controller.rhdemo.win
+username=admin
+password=${TF_VAR_aap_password}
+verify_ssl = false
+EOF
+
+# Run ansible playbook
+ansible-playbook configure-aap-controller.yaml --extra-vars first_run=true
+#+end_src
+
+
+Once ansible automation platform is configured we can test running a workflow using the following additional playbook.
+
+#+NAME: Launch a job template
+#+begin_src tmate
+ansible-playbook run-aap-job.yaml
+#+end_src

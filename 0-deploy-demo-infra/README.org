@@ -1,0 +1,65 @@
+#+TITLE: Deploying demo infrastructure
+#+AUTHOR: James Blair <jablair@redhat.com>
+#+DATE: 5th January 2023
+
+This guide will outline the steps to follow to deploy the infrastructure required to run demonstrations. Infrastructure provisioning is performed via [[https://www.ansible.com/][ansible]] using the [[https://www.terraform.io/][terraform]] collection.
+
+To run the demo we need four rhel virtual machines, these machines will run our ansible automation platform components, namely the controller, private automation hub, single sign-on, and automation services catalog.
+
+To get started we need to define some credentials into an ~.env~ file. Note that these credentials are ignored in the repo ~.gitignore~ file for security reasons.
+
+#+NAME: Create secret env file
+#+begin_src tmate
+cat << EOF > .env
+export TF_VAR_gitlab_token=placeholder
+
+export TF_VAR_subscription_pw=placeholder
+
+export TF_VAR_aws_region=ap-southeast-2
+export TF_VAR_aws_access_key=placeholder
+export TF_VAR_aws_secret_key=placeholder
+
+export TF_VAR_cloudflare_token=placeholder
+export TF_VAR_cloudflare_zone_id=placeholder
+
+export TF_VAR_aap_token=placeholder
+export TF_VAR_aap_password=placeholder
+
+export catalog_user=placeholder
+export catalog_password=placeholder
+EOF
+#+end_src
+
+
+Once secrets have been defined run the code block below to install our dependencies and run the ansible playbook that will deploy our infrastructure.
+
+#+NAME: Install dependencies and run
+#+begin_src tmate
+# Source secrets
+source ../.env
+
+# Install certified terraform collection
+ansible-galaxy collection install cloud.terraform
+ansible-galaxy collection install awx.awx
+ansible-galaxy collection install middleware_automation.jws
+
+# Run the deploy playbook
+ansible-playbook -i localhost demo-infra-deploy.yaml
+#+end_src
+
+
+The code block above will create and configure our new virtual machines. If required the configure playbook can also be run manually post creation using the code block below. I've noticed that sometimes first run the external IP addresses for the ec2 instances updates post terraform apply so a second run will correct that in cloudflare.
+
+#+NAME: Run the configure playbook
+#+begin_src tmate
+# Run the configure playbook
+ansible-playbook -i controller.rhdemo.win,hub.rhdemo.win,sso.rhdemo.win,catalog.rhdemo.win -u root demo-infra-configure.yaml --key-file rhel-demo-dev-linux-ap-southeast-2.pem
+#+end_src
+
+
+Once deployed and configured you can test the connection by running the following:
+
+#+NAME: Connect to controller instance
+#+begin_src tmate
+ssh -i rhel-demo-dev-linux-ap-southeast-2.pem ec2-user@controller.rhdemo.win
+#+end_src

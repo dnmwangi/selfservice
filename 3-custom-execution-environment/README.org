@@ -1,0 +1,37 @@
+#+TITLE: Build custom ansible execution environment
+#+AUTHOR: James Blair <jablair@redhat.com>
+#+DATE: 4th November 2022
+
+Automation execution environments dramatically simplify how automation is executed and managed. An automation execution environment is a container image used to execute Ansible playbooks and roles. It provides a defined, consistent, portable environment for executing automation.
+
+For our demonstration today we will build a custom ansible execution environment using ~podmand~ that has ~terraform~ installed for infrastructure provisioning.
+
+* Login to container registry
+
+We are using ~ansible-automation-platform-22/ee-supported-rhel8:latest~ as our base image for this execution environment. In order to be able to pull and build our own extended version of this base image we need to be logged into the ~registry.redhat.io~ container registry, we need to first [[https://access.redhat.com/terms-based-registry/][create a registry token]] then we can run the command below to login:
+
+#+NAME: Login to container registry
+#+begin_src bash
+podman login registry.redhat.io
+Username: {REGISTRY-SERVICE-ACCOUNT-USERNAME}
+Password: {REGISTRY-SERVICE-ACCOUNT-PASSWORD}
+Login Succeeded!
+#+end_src
+
+
+* Build and tag the image
+
+#+NAME: Build and tag the custom ee image
+#+begin_src bash
+podman build . --tag registry.gitlab.com/jmhbnz/terraform-aws-rhel-ec2-instance/ee-supported-rhel8-terraform:latest
+#+end_src
+
+
+* Push the image to container registry
+
+Once our new execution environment image is built we will push this to our private container registry, in this case Gitlab container registry.
+
+#+NAME: Push image to private registry
+#+begin_src
+podman push registry.gitlab.com/jmhbnz/terraform-aws-rhel-ec2-instance/ee-supported-rhel8-terraform:latest
+#+end_src

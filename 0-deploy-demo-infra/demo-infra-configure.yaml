@@ -1,0 +1,67 @@
+- name: Configure demo infra
+  hosts: all
+  gather_facts: false
+  vars:
+    ansible_host_key_checking: false
+
+  tasks:
+
+    - name: Wait for ssh connection
+      ansible.builtin.wait_for_connection:
+        delay: 30
+        timeout: 600
+
+    - name: Register machine via subscription manager
+      community.general.redhat_subscription:
+        state: present
+        username: rh-ee-jablair
+        password: "{{ lookup('env', 'TF_VAR_subscription_pw') }}"
+        auto_attach: false
+
+    - name: Ensure manage repos set correctly
+      ansible.builtin.shell: |
+        sudo sed -i 's/manage_repos = 0/manage_repos = 1/g' /etc/rhsm/rhsm.conf
+
+    - name: Install required packages
+      ansible.builtin.yum:
+        name: python39-pip
+        state: latest
+
+    - name: Install ansible via pip
+      ansible.builtin.pip:
+        name: ansible
+
+    - name: Obtain aap installer
+      get_url:
+        url: https://gitlab.com/jmhbnz/self-service-demo/-/package_files/61982964/download
+        dest: /home/ec2-user/aap-setup.tar.gz
+        headers:
+          DEPLOY-TOKEN: "{{ lookup('env', 'TF_VAR_gitlab_token') }}"
+
+    - name: Untar the aap installer
+      unarchive:
+        remote_src: yes
+        src: /home/ec2-user/aap-setup.tar.gz
+        dest: /home/ec2-user/
+
+    - name: Set ansible config
+      lineinfile:
+        path: /etc/ansible/ansible.cfg
+        line: "{{ item }}"
+        state: present
+        create: true
+      loop:
+        - "[defaults]"
+        - "private_key_file = /home/ec2-user/rhel-demo-dev-linux-ap-southeast-2.pem"
+        - "host_key_checking = False"
+
+    - name: Copy key file to server
+      copy:
+        src: rhel-demo-dev-linux-ap-southeast-2.pem
+        dest: /home/ec2-user/rhel-demo-dev-linux-ap-southeast-2.pem
+        mode: 0400
+
+    - name: Copy inventory file to server
+      copy:
+        src: inventory
+        dest: /home/ec2-user/ansible-automation-platform-setup-2.3-1/inventory

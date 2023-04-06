@@ -1,0 +1,99 @@
+---
+- name: Configure automation controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - awx.awx
+
+  tasks:
+
+    - name: "Add project for drift detection"
+      project:
+        name: "Configuration management"
+        description: "Configuration management and drift detection automation."
+        organization: "Default"
+        state: "present"
+        scm_type: "git"
+        scm_url: "https://github.com/jmhbnz/RHEL8-CIS"
+        controller_config_file: "controller.cfg"
+        scm_update_on_launch: false
+
+    - name: "Create jira api credential"
+      awx.awx.credential:
+        name: "Jira drift"
+        organization: "Default"
+        state: "present"
+        credential_type: "Jira"
+        inputs:
+          username: "{{ lookup('env', 'TF_VAR_jira_drift_username') }}"
+          password: "{{ lookup('env', 'TF_VAR_jira_drift_password') }}"
+          url: "{{ lookup('env', 'TF_VAR_jira_url') }}"
+        controller_config_file: "controller.cfg"
+
+    - name: "Add job template for enforcing cis level one"
+      job_template:
+        name: "Audit compliance benchmark"
+        organization: "Default"
+        state: "present"
+        description: "Job template to check compliance on a host."
+        project: "Configuration management"
+        inventory: "AWS Middleware non-production"
+        playbook: "site.yml"
+        credential: "Amazon Web Services Machine"
+        job_tags: "level1-server"
+        skip_tags:
+          "rule_5.2.14"
+        extra_vars:
+          rhel8cis_run_audit: true
+        controller_config_file: "controller.cfg"
+        allow_simultaneous: true
+
+    - name: "Add job template for jira create"
+      awx.awx.job_template:
+        name: "Jira create"
+        organization: "Default"
+        state: "present"
+        description: ""
+        project: "Self-service"
+        inventory: "Localhost"
+        playbook: "4-config-drift-detection/create-jira-issue-api.yaml"
+        survey_enabled: false
+        ask_credential_on_launch: true
+        ask_variables_on_launch: true
+        controller_config_file: "controller.cfg"
+
+    - name: "Create a workflow job template for drift management"
+      awx.awx.workflow_job_template:
+        controller_config_file: "controller.cfg"
+        name: "Drift management"
+        inventory: "Localhost"
+        destroy_current_schema: true
+        ask_variables_on_launch: true
+        allow_simultaneous: true
+
+    - name: "Create workflow node for jira create"
+      awx.awx.workflow_job_template_node:
+        identifier: "Create jira"
+        unified_job_template: "Jira create"
+        workflow_job_template: "Drift management"
+        credentials:
+          - "Jira drift"
+        extra_data:
+          jira_comment: "Provisioning workflow completed! New instance has been created, check your inbox! ✅"
+        controller_config_file: "controller.cfg"
+
+    - name: "Create workflow node drift detect"
+      awx.awx.workflow_job_template_node:
+        identifier: "Audit compliance benchmark"
+        unified_job_template: "Audit compliance benchmark"
+        workflow_job_template: "Drift management"
+        controller_config_file: "controller.cfg"
+        failure_nodes: "Create jira"
+
+    - name: "Create schedule for audit job template to run every 30 minutes"
+      schedule:
+        name: "Audit compliance benchmark"
+        rrule: "DTSTART:20230124T202445Z RRULE:FREQ=MINUTELY;INTERVAL=30"
+        unified_job_template: "Audit compliance benchmark"
+        controller_config_file: "controller.cfg"

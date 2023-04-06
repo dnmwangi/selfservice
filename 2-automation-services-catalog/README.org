@@ -1,0 +1,29 @@
+#+TITLE: Configure ansible automation services catalog
+#+AUTHOR: James Blair <jablair@redhat.com>
+#+DATE: 16th January 2023
+
+With our infrastructure stood up and our automation controller configured this next section of the repository will cover configuring [[https://www.ansible.com/products/automation-services-catalog][Ansible Automation Services Catalog]] with a self service aws ec2 virtual machine provisioning and management example. The intent of this guide is to make it easy to demonstrate the self service capabilities of Ansible Automation Platform.
+
+We need to spin up demonstration environments quickly then throw them away again when finished, with this in mind we will automate our entire configuration for ansible automation services catalog. Unfortunately the development of automation services catalog is in such an early state that the API is not yet accessible properly, refer to [[https://github.com/redhat-cop/services_catalog_configuration/issues/1][this issue]]. We can work around this blocker by automating the setup via the user interface using [[https://learn.microsoft.com/en-us/microsoft-edge/playwright][playwright]].
+
+Run the code below to install playwright
+
+#+NAME: Install playwright
+#+begin_src tmate
+# Install playwright test
+npm install --save-dev @playwright/test
+
+# Install browsers required by playwright
+npx playwright install
+#+end_src
+
+
+Once playwright is installed we can run a basic browser automation flow to set up services catalog
+
+#+begin_src tmate
+# Ensure environment variables are present
+source ../.env
+
+# Run the browser automation
+npx playwright test setup-services-catalog.spec.ts --headed
+#+end_src
