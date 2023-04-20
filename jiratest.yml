@@ -1,0 +1,15 @@
+---
+- name: Assign a jira issue TEST
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+  - name: Assign an issue using free-form fields
+	  jira:
+		  uri: '{{ server }}'
+		  username: '{{ user }}'
+		  password: '{{ pass }}'
+		  issue: '{{ issue.meta.key}}'
+		  operation: edit
+		  assignee: ansible
