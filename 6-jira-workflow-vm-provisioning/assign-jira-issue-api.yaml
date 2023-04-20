@@ -15,7 +15,7 @@
         body:
           fields:
             assignee:
-              name: "ansible"
+              displayName: "ansible"
         force_basic_auth: true
         status_code: 204
         body_format: "json"
