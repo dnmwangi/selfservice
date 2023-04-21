@@ -33,8 +33,8 @@
             jira_password: "{% raw -%}{{ password }}{% endraw -%}"
             jira_url: "{% raw -%}{{ url }}{% endraw -%}"
         state: present
+        controller_config_file: "controller.cfg"
         
-
     - name: "Create jira api credential"
       awx.awx.credential:
         name: "Jira provisioning"
