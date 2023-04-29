@@ -33,8 +33,10 @@
             jira_password: "{% raw -%}{{ password }}{% endraw -%}"
             jira_url: "{% raw -%}{{ url }}{% endraw -%}"
         state: present
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
         controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         
     - name: "Create jira api credential"
       awx.awx.credential:
