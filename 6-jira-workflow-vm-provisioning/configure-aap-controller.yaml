@@ -45,7 +45,7 @@
           username: "{{ lookup('env', 'TF_VAR_jira_provisioning_username') }}"
           password: "{{ lookup('env', 'TF_VAR_jira_provisioning_password') }}"
           url: "{{ lookup('env', 'TF_VAR_jira_url') }}"
-        controller_config_file: "controller.cfg"
+        controller_config_file: "~/controller.cfg"
 
     - name: "Add project for jira self-service"
       awx.awx.project:
