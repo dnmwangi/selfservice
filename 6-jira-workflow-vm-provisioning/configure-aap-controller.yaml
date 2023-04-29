@@ -48,8 +48,10 @@
           username: "{{ lookup('env', 'TF_VAR_jira_provisioning_username') }}"
           password: "{{ lookup('env', 'TF_VAR_jira_provisioning_password') }}"
           url: "{{ lookup('env', 'TF_VAR_jira_url') }}"
-        controller_config_file: "~/controller.cfg"
+        #controller_config_file: "~/controller.cfg"
         controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Add project for jira self-service"
       awx.awx.project:
@@ -59,7 +61,10 @@
         state: "present"
         scm_type: "git"
         scm_url: "https://gitlab.com/jmhbnz/self-service-demo.git"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         scm_update_on_launch: false
 
     - name: "Add job template for request validation"
@@ -73,7 +78,10 @@
         playbook: "6-jira-workflow-vm-provisioning/validate-provisioning-request.yaml"
         survey_enabled: false
         ask_variables_on_launch: false
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Add job template for jira comment"
       awx.awx.job_template:
@@ -87,7 +95,10 @@
         survey_enabled: false
         ask_credential_on_launch: true
         ask_variables_on_launch: true
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Add job template for jira assign"
       awx.awx.job_template:
@@ -101,7 +112,10 @@
         survey_enabled: false
         ask_credential_on_launch: true
         ask_variables_on_launch: true
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Add job template for jira transition"
       awx.awx.job_template:
@@ -115,11 +129,17 @@
         survey_enabled: false
         ask_credential_on_launch: true
         ask_variables_on_launch: true
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Create a workflow job template for vm provisioning"
       awx.awx.workflow_job_template:
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         name: "Vm provisioning"
         inventory: "Localhost"
         destroy_current_schema: true
@@ -135,7 +155,10 @@
           jira_transition: "41"
         credentials:
           - "Jira provisioning"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Create workflow node for provisioning done comment"
       awx.awx.workflow_job_template_node:
@@ -146,7 +169,10 @@
           - "Jira provisioning"
         extra_data:
           jira_comment: "Provisioning workflow completed! New instance has been created, check your inbox! ✅"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         all_parents_must_converge: true
         success_nodes: "Done transition"
 
@@ -155,7 +181,10 @@
         identifier: "Create new vm instance"
         unified_job_template: "Create ec2 instance"
         workflow_job_template: "Vm provisioning"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         success_nodes:
           - "Completed comment"
 
@@ -168,7 +197,10 @@
           - "Jira provisioning"
         extra_data:
           jira_comment: "This issue has been picked up by provisioning bot :)  You can track my progress here: https://aap.apps.rosa-xjm4v.nx1c.p1.openshiftapps.com/#/jobs?job.name__icontains=provisioning&job.or__type=workflow_job"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         success_nodes:
           - "Create new vm instance"
 
@@ -181,7 +213,10 @@
           - "Jira provisioning"
         extra_data:
           jira_comment: "Provisioning instance was not approved."
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Create workflow node for in progress transition"
       awx.awx.workflow_job_template_node:
@@ -192,7 +227,10 @@
           jira_transition: "11"
         credentials:
           - "Jira provisioning"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         success_nodes:
           - "Assigned comment"
 
@@ -203,7 +241,10 @@
         workflow_job_template: "Vm provisioning"
         credentials:
           - "Jira provisioning"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         success_nodes:
           - "In progress transition"
 
@@ -215,13 +256,19 @@
           description: "Should instance be created?"
           name: "Approval"
           timeout: 3600
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
 
     - name: "Link approval node"
       awx.awx.workflow_job_template_node:
         identifier: "Approval"
         workflow_job_template: "Vm provisioning"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         success_nodes:
           - "Assign"
         failure_nodes:
@@ -236,7 +283,10 @@
           - "Jira provisioning"
         extra_data:
           jira_comment: "Approval required for this request: https://aap.apps.rosa-xjm4v.nx1c.p1.openshiftapps.com/#/workflow_approvals?workflow_approvals.status__startswith=pending"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         success_nodes: "Approval"
 
     - name: "Create workflow node for request validation"
@@ -244,7 +294,10 @@
         identifier: "Validate"
         unified_job_template: "Validate provisioning request"
         workflow_job_template: "Vm provisioning"
-        controller_config_file: "controller.cfg"
+        #controller_config_file: "controller.cfg"
+        controller_host: "http://192.168.100.36:32297"
+        controller_username : "admin"
+        controller_password : "Jumper213"
         success_nodes:
          - "Assign"
         failure_nodes:
