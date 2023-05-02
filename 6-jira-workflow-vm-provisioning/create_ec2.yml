@@ -1,0 +1,44 @@
+---
+- name: Create EC2 instance
+  hosts: localhost
+  gather_facts: no
+  vars:
+    region: "{{ region }}"
+    instance_type: "{{ instance_type }}"
+    tags_purpose: "{{ tags_purpose }}"
+
+  tasks:
+    - name: Retrieve the default VPC ID
+      ec2_vpc_net_facts:
+        region: "{{ region }}"
+        filters:
+          isDefault: true
+      register: vpc_facts
+
+    - name: Retrieve the default VPC subnet ID
+      ec2_vpc_subnet_facts:
+        region: "{{ region }}"
+        filters:
+          vpc-id: "{{ vpc_facts.vpcs[0].id }}"
+          default-for-az: true
+      register: subnet_facts
+
+    - name: Create EC2 instance
+      ec2:
+        region: "{{ region }}"
+        key_name: "mykeypair"
+        instance_type: "{{ instance_type }}"
+        image: "ami-0c55b159cbfafe1f0"
+        vpc_subnet_id: "{{ subnet_facts.subnets[0].id }}"
+        assign_public_ip: true
+        wait: yes
+        count: "{{ count }}"
+        instance_tags:
+          Name: "{{ tags_purpose }}"
+          Purpose: "{{ tags_purpose }}"
+          Type: "Demo"
+      register: ec2_facts
+
+    - name: Display EC2 instance information
+      debug:
+        var: ec2_facts.instances
