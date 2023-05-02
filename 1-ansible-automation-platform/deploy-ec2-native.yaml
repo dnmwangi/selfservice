@@ -8,7 +8,7 @@
 
     - name: "Retrieve the default vpc subnet id"
       amazon.aws.ec2_vpc_subnet_info:
-        region: "{{ region.split(' ')[0] | default('ap-southeast-2') }}"
+        region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         filters:
           "tag:Name": "rhel-demo-dev-public-subnet"
       register: subnet_info
