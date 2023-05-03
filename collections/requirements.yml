@@ -1,6 +1,19 @@
 ---
 collections:
-- middleware_automation.redhat_csp_download
-- middleware_automation.jws
-- middleware_automation.common_criteria
-- awx.awx
+- name: middleware_automation.redhat_csp_download
+- name: middleware_automation.jws
+- name: middleware_automation.common_criteria
+- name: awx.awx
+- name: azure.azcollection
+- name: amazon.aws
+- name: theforeman.foreman
+- name: google.cloud
+- name: openstack.cloud
+- name: community.general
+- name: community.vmware
+- name: community.docker
+- name: ovirt.ovirt
+- name: kubernetes.core
+- name: ansible.posix
+- name: ansible.windows
+- name: redhatinsights.insights
