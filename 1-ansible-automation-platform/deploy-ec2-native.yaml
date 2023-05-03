@@ -16,7 +16,7 @@
     - name: "Print new vm variables"
       ansible.builtin.debug:
         msg:
-          - "Subnet identified: {{ subnet_info }}"
+          - "Subnet identified: {{ subnet_info.subnets[0].id }}"
           - "Region input: {{ region }}"
           - "Instance type: {{ instance_type }}"
           - "Purpose: {{ tags_purpose }}"
@@ -24,10 +24,10 @@
     - name: "Create a rhel aws ec2 instance"
       amazon.aws.ec2_instance:
         name: "{{ tags_purpose }}-ec2-instance"
-        key_name: "rhel-demo-dev-linux-ap-southeast-2"
+        key_name: "default_key"
         vpc_subnet_id: "{{ subnet_info.subnets[0].id }}"
         instance_type: "{{ instance_type.split(' ')[0] | default('t2.micro') }}"
-        security_group: "rhel-demo-dev-linux-sg"
+        security_group: "default_sg"
         region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         network:
           assign_public_ip: false
@@ -46,5 +46,5 @@
         in_vpc: true
         reuse_existing_ip_allowed: true
         state: present
-        region: "{{ region.split(' ')[0] | default('ap-southeast-2') }}"
+        region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         instance_id: "{{ instance.instance_ids[0] }}"
