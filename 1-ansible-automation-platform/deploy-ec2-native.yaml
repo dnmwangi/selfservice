@@ -16,7 +16,7 @@
     - name: "Print new vm variables"
       ansible.builtin.debug:
         msg:
-          - "Subnet identified: {{ subnet_info.subnets[0].id }}"
+          - "Subnet identified: {{ subnet_info.subnet_id }}"
           - "Region input: {{ region }}"
           - "Instance type: {{ instance_type }}"
           - "Purpose: {{ tags_purpose }}"
