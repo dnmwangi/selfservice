@@ -10,13 +10,13 @@
       amazon.aws.ec2_vpc_subnet_info:
         region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         filters:
-          "tag:Name": "rhel-demo-dev-public-subnet"
+          "tag:Name": "default_subnet"
       register: subnet_info
 
     - name: "Print new vm variables"
       ansible.builtin.debug:
         msg:
-          #- "Subnet identified: {{ subnet_info.subnets[0].id }}"
+          - "Subnet identified: {{ subnet_info.subnets_id[0] }}"
           - "Region input: {{ region }}"
           - "Instance type: {{ instance_type }}"
           - "Purpose: {{ tags_purpose }}"
