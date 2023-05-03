@@ -31,7 +31,7 @@
         region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         network:
           assign_public_ip: false
-        image_id: "ami-0b4ee18dc73d90a7b"
+        image_id: "ami-042f472397924d29f"
         user_data: "{{ lookup('file', '../0-deploy-demo-infra/aws-user-data.sh') | b64encode }}"
         state: running
         wait: true
