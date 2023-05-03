@@ -10,7 +10,7 @@
       amazon.aws.ec2_vpc_subnet_info:
         region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         filters:
-          "tag:Name": "default_subnet"
+          "tag:Name": "default_vpc"
       register: subnet_info
 
     - name: "Print new vm variables"
