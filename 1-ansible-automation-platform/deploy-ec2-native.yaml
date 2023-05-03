@@ -28,7 +28,7 @@
         vpc_subnet_id: "{{ subnet_info.subnets[0].id }}"
         instance_type: "{{ instance_type.split(' ')[0] | default('t2.micro') }}"
         security_group: "rhel-demo-dev-linux-sg"
-        region: "{{ region.split(' ')[0] | default('ap-southeast-2') }}"
+        region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         network:
           assign_public_ip: false
         image_id: "ami-0b4ee18dc73d90a7b"
