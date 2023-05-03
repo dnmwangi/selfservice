@@ -27,7 +27,7 @@
         key_name: "default_key"
         vpc_subnet_id: "{{ subnet_info.subnets[0].id }}"
         instance_type: "{{ instance_type.split(' ')[0] | default('t2.micro') }}"
-        security_group: "default_sg"
+        security_group: "default"
         region: "{{ region.split(' ')[0] | default('us-east-1') }}"
         network:
           assign_public_ip: false
